@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 120 100% 50%;
+    --card: 120 100% 2%;
+    --card-foreground: 120 100% 90%;
+    --popover: 120 100% 2%;
+    --popover-foreground: 120 100% 90%;
+    --primary: 120 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 120 70% 20%;
+    --secondary-foreground: 120 100% 90%;
+    --muted: 120 50% 10%;
+    --muted-foreground: 120 100% 70%;
+    --accent: 120 70% 20%;
+    --accent-foreground: 120 100% 90%;
+    --destructive: 0 100% 30%;
+    --destructive-foreground: 120 100% 90%;
+    --border: 120 100% 25%;
+    --input: 120 50% 10%;
+    --ring: 120 100% 50%;
+    --radius: 0.25rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-terminal-black text-terminal-green font-mono antialiased min-h-screen;
+    text-shadow: 0 0 5px theme('colors.terminal.glow.DEFAULT');
+  }
+}
+
+@layer components {
+  .terminal-container {
+    @apply relative min-h-screen p-6 md:p-8;
+    @apply bg-terminal-gradient;
+    @apply before:content-[''] before:fixed before:inset-0 before:bg-terminal-noise before:opacity-[0.015] before:pointer-events-none;
+  }
+
+  .terminal-header {
+    @apply relative flex items-center gap-2 pb-4 mb-8 border-b border-terminal-green/20;
+  }
+
+  .terminal-header::before {
+    content: ">";
+    @apply text-terminal-green/60 animate-terminal-blink;
+  }
+
+  .terminal-section {
+    @apply relative border border-terminal-green/20 rounded-md p-6 mb-8;
+    @apply bg-terminal-black/50 backdrop-blur-sm;
+    @apply animate-ambient-glow;
+  }
+
+  .terminal-keyboard {
+    @apply relative flex flex-wrap gap-1 p-6 rounded-lg;
+    @apply border border-terminal-green/20 bg-terminal-black/40;
+  }
+
+  .terminal-key {
+    @apply relative flex items-center justify-center cursor-pointer select-none;
+    @apply border border-terminal-green/40 transition-all duration-150;
+    @apply font-mono text-sm;
+  }
+
+  .terminal-key-white {
+    @apply h-32 w-12 bg-terminal-black/60;
+    @apply hover:bg-terminal-green-dark hover:border-terminal-green/60;
+  }
+
+  .terminal-key-black {
+    @apply h-20 w-8 -mx-4 z-10 bg-terminal-green-darker;
+    @apply hover:bg-terminal-green-dark hover:border-terminal-green/60;
+  }
+
+  .terminal-key-pressed {
+    @apply bg-terminal-green text-terminal-black;
+    @apply border-terminal-green;
+    text-shadow: none;
+  }
+
+  .terminal-title {
+    @apply text-2xl font-bold animate-terminal-glow;
+  }
+
+  .terminal-text {
+    @apply text-terminal-green/90 leading-relaxed;
+  }
+
+  .terminal-button {
+    @apply px-4 py-2 border border-terminal-green/40 rounded-sm;
+    @apply bg-transparent hover:bg-terminal-green-dark;
+    @apply transition-colors duration-150;
+    @apply text-terminal-green hover:text-terminal-green-light;
+    @apply animate-terminal-glow;
+  }
+
+  .terminal-input {
+    @apply w-full px-4 py-2 bg-terminal-black/50 rounded-sm;
+    @apply border border-terminal-green/40 focus:border-terminal-green;
+    @apply text-terminal-green placeholder-terminal-green/30;
+    @apply focus:outline-none focus:ring-1 focus:ring-terminal-green/50;
+  }
+
+  .terminal-scanlines {
+    @apply pointer-events-none fixed inset-0 z-50;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.1) 50%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    background-size: 100% 4px;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-terminal-black;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-terminal-green/30 rounded;
+  @apply hover:bg-terminal-green/50 transition-colors duration-150;
+}
+
+/* Selection */
+::selection {
+  @apply bg-terminal-green text-terminal-black;
+  text-shadow: none;
+}
+
+/* Custom CRT Monitor Effect */
+.crt-monitor {
+  @apply overflow-hidden;
+}
+
+.crt-monitor::before {
+  content: " ";
+  @apply block absolute top-0 left-0 bottom-0 right-0 z-10;
+  background: linear-gradient(
+    to bottom,
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+}
+
+.crt-monitor::after {
+  content: " ";
+  @apply block absolute top-0 left-0 bottom-0 right-0 z-20;
+  background: rgba(18, 16, 16, 0.1);
+  opacity: 0;
+  pointer-events: none;
+  animation: terminal-flicker 0.15s infinite;
+}
+
+/* Glowing Text Effect */
+.text-glow-hover {
+  @apply transition-all duration-300;
+}
+
+.text-glow-hover:hover {
+  @apply text-terminal-green-light;
+  text-shadow: 0 0 10px theme('colors.terminal.glow.strong');
+}
