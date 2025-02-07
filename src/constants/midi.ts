@@ -1,25 +1,34 @@
+// src/constants/midi.ts
 import { Note, MIDINote } from '@/types/synth';
 
-export const MIDI_NOTES: Record<Note, MIDINote> = {
-  'C4': { note: 'C4', frequency: 261.63, midiNumber: 60 },
-  'C#4': { note: 'C#4', frequency: 277.18, midiNumber: 61 },
-  'D4': { note: 'D4', frequency: 293.66, midiNumber: 62 },
-  'D#4': { note: 'D#4', frequency: 311.13, midiNumber: 63 },
-  'E4': { note: 'E4', frequency: 329.63, midiNumber: 64 },
-  'F4': { note: 'F4', frequency: 349.23, midiNumber: 65 },
-  'F#4': { note: 'F#4', frequency: 369.99, midiNumber: 66 },
-  'G4': { note: 'G4', frequency: 392.00, midiNumber: 67 },
-  'G#4': { note: 'G#4', frequency: 415.30, midiNumber: 68 },
-  'A4': { note: 'A4', frequency: 440.00, midiNumber: 69 },
-  'A#4': { note: 'A#4', frequency: 466.16, midiNumber: 70 },
-  'B4': { note: 'B4', frequency: 493.88, midiNumber: 71 },
-  'C5': { note: 'C5', frequency: 523.25, midiNumber: 72 },
-  'C#5': { note: 'C#5', frequency: 554.37, midiNumber: 73 },
-  'D5': { note: 'D5', frequency: 587.33, midiNumber: 74 },
-  'D#5': { note: 'D#5', frequency: 622.25, midiNumber: 75 },
-  'E5': { note: 'E5', frequency: 659.25, midiNumber: 76 }
-} as const;
+// Define the 12 note names.
+const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
+// Create a mapping for all MIDI notes from 0 to 127.
+const midiNotes: Record<Note, MIDINote> = {} as Record<Note, MIDINote>;
+
+for (let midi = 0; midi < 128; midi++) {
+  // Standard MIDI octave calculation: MIDI note 60 (A4) corresponds to octave 4.
+  const octave = Math.floor(midi / 12) - 1;
+  // Determine the note name (e.g., "C", "C#", etc.) from the remainder.
+  const noteName = noteNames[midi % 12];
+  // Form the full note string (e.g., "C4").
+  const note = `${noteName}${octave}` as Note;
+  // Calculate the frequency using the formula: frequency = 440 * 2^((midi - 69)/12)
+  const frequency = 440 * Math.pow(2, (midi - 69) / 12);
+  // Save the computed MIDINote in the mapping (rounding frequency to 2 decimals).
+  midiNotes[note] = {
+    note,
+    frequency: parseFloat(frequency.toFixed(2)),
+    midiNumber: midi,
+  };
+}
+
+// Export the complete mapping as a constant.
+export const MIDI_NOTES = midiNotes;
+
+// Define your computer keyboard mapping for the synthesizer interface.
+// These values represent the base (default) octave; your keyboard logic can shift these names.
 export const KEYBOARD_MAP: Record<string, Note> = {
   KeyA: 'C4',
   KeyW: 'C#4',
@@ -38,4 +47,4 @@ export const KEYBOARD_MAP: Record<string, Note> = {
   KeyL: 'D5',
   KeyP: 'D#5',
   Semicolon: 'E5'
-};
+} as const;

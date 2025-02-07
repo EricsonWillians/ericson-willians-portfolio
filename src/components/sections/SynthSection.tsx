@@ -1,5 +1,5 @@
 // src/components/sections/SynthSection.tsx
-import React, { memo, useCallback, useState } from "react";
+import React, { memo, useCallback, useState, useEffect } from "react";
 import { SynthKeyboard } from "@/components/synth/SynthKeyboard";
 import { SynthControls } from "@/components/synth/SynthControls";
 import { useSynth } from "@/providers/SynthProvider";
@@ -7,12 +7,16 @@ import { useSynth } from "@/providers/SynthProvider";
 export function SynthSection() {
   const { currentSettings, updateSettings, ready, error } = useSynth();
   const [isMinimized, setIsMinimized] = useState(false);
+  // New state to track octave shift; 0 means default, negative means lower, positive means higher.
+  const [octaveOffset, setOctaveOffset] = useState(0);
+  const [shouldAdjustKeyboardLayout, setShouldAdjustKeyboardLayout] = useState(false);
 
   const handleToggleView = useCallback(() => {
     setIsMinimized(prev => !prev);
+    setShouldAdjustKeyboardLayout(prev => !prev);
   }, []);
 
-  // Determine the audio status message and light color.
+  // Determine audio status for display.
   const getAudioStatus = () => {
     if (error) {
       return { text: "Audio Error - Refresh Page", color: "bg-red-500", showStartButton: true };
@@ -40,7 +44,9 @@ export function SynthSection() {
         <span className="text-sm text-terminal-green">{label}:</span>
         <div className="flex items-center gap-2">
           <div
-            className={`w-2 h-2 rounded-full ${enabled ? "bg-terminal-green" : "bg-terminal-green/20"}`}
+            className={`w-2 h-2 rounded-full ${
+              enabled ? "bg-terminal-green" : "bg-terminal-green/20"
+            }`}
           />
           <span className="text-sm text-terminal-green">
             {enabled ? `${(value * 100).toFixed(0)}%` : "Off"}
@@ -50,6 +56,23 @@ export function SynthSection() {
     )
   );
   EffectDisplay.displayName = "EffectDisplay";
+
+  // Listen for global octave shift key events.
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "z") {
+        setOctaveOffset(prev => prev - 1);
+        e.preventDefault();
+      } else if (e.key.toLowerCase() === "v") {
+        setOctaveOffset(prev => prev + 1);
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+    };
+  }, []);
 
   return (
     <section className="terminal-section p-6" aria-label="Synthesizer Interface">
@@ -77,9 +100,13 @@ export function SynthSection() {
         </div>
       </header>
 
+      {/* Display current octave range */}
+      <div className="text-terminal-green text-center mb-2">
+        Current Octave Range: {4 + octaveOffset} - {4 + octaveOffset + 1}
+      </div>
+
       {/* Main Content */}
       <div className={`grid gap-6 transition-all duration-300 ${isMinimized ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2"}`}>
-        {/* Left Section: Synth Controls and Effect Status */}
         {!isMinimized && (
           <div className="space-y-6">
             <div className="bg-black p-6 rounded border border-terminal-green">
@@ -109,10 +136,11 @@ export function SynthSection() {
           </div>
         )}
 
-        {/* Right Section: Synth Keyboard */}
+        {/* Keyboard Section */}
         <div className={isMinimized ? "col-span-1" : "lg:col-span-1"}>
           <div className="bg-black p-6 rounded border border-terminal-green">
-            <SynthKeyboard />
+            {/* Pass octaveOffset as a prop to the keyboard */}
+            <SynthKeyboard octaveOffset={octaveOffset} shouldAdjustKeyboardLayout={shouldAdjustKeyboardLayout} />
           </div>
         </div>
       </div>
@@ -124,8 +152,8 @@ export function SynthSection() {
             <h3 className="font-medium mb-2">Keyboard Controls</h3>
             <pre className="bg-black/30 p-3 rounded text-xs">
               {`White Keys: A S D F G H J K L ;
-Black Keys: W E   T Y U   O P
-Special:   ESC (Panic)`}
+Black Keys: W E   T Y U   O P ;
+Special: ESC (Panic), Z (Octave Down), V (Octave Up)`}
             </pre>
           </div>
           <div className="text-sm text-terminal-green/80">
@@ -135,6 +163,7 @@ Special:   ESC (Panic)`}
               <li>• Use ESC key or Panic button to stop all sounds</li>
               <li>• Adjust effects in real-time while playing</li>
               <li>• Hide controls to focus on the keyboard</li>
+              <li>• Use Z and V to shift octaves live</li>
             </ul>
           </div>
         </div>

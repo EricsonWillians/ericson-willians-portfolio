@@ -1,30 +1,149 @@
-// src/components/synth/SynthKeyboard.tsx
-import React, { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  memo,
+  useMemo,
+} from 'react';
 import * as Tone from 'tone';
 import { Note } from '@/types/synth';
 import { MIDI_NOTES, KEYBOARD_MAP } from '@/constants/midi';
 import { Key } from '@/components/synth/Key';
 import { useSynth } from '@/providers/SynthProvider';
 
-const START_OCTAVE = 4;
-const NUM_OCTAVES = 2;
-const whiteNoteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-const blackNotesMapping: Record<string, number> = {
-  'C#': 1,
-  'D#': 2,
-  'F#': 4,
-  'G#': 5,
-  'A#': 6,
+// Define a fixed base keyboard order with 17 keys that correspond to your computer-key mapping.
+const BASE_KEYBOARD_ORDER: Note[] = [
+  'C4', 'C#4', 'D4', 'D#4', 'E4',
+  'F4', 'F#4', 'G4', 'G#4', 'A4', 'A#4', 'B4',
+  'C5', 'C#5', 'D5', 'D#5', 'E5',
+];
+
+// Keyboard layout configuration constants
+const KEYBOARD_LAYOUT = {
+  BLACK_KEY: {
+    PLACEMENT: {
+      WITH_CONTROLS: 1.12,    // Original placement with controls showing
+      WITHOUT_CONTROLS: 1.35  // Adjusted placement when controls are hidden
+    },
+    WIDTH: {
+      WITH_CONTROLS: 0.4,     // Default width with controls showing
+      WITHOUT_CONTROLS: 1.2   // Wider when controls are hidden
+    },
+    HEIGHT_RATIO: 0.65
+  }
 };
+
+/**
+ * Shifts a note's octave by a given offset.
+ * For example, shiftNoteOctave("C4", -1) returns "C3".
+ */
+function shiftNoteOctave(note: Note, offset: number): Note {
+  const regex = /^([A-G]#?)(\d)$/;
+  const match = note.match(regex);
+  if (!match) return note;
+  const [, noteName, octaveStr] = match;
+  const newOctave = parseInt(octaveStr, 10) + offset;
+  return `${noteName}${newOctave}` as Note;
+}
 
 const MemoizedKey = memo(Key);
 
-export function SynthKeyboard() {
+interface SynthKeyboardProps {
+  octaveOffset: number;
+  shouldAdjustKeyboardLayout: boolean;
+}
+
+export function SynthKeyboard({ 
+  octaveOffset, 
+  shouldAdjustKeyboardLayout 
+}: SynthKeyboardProps) {
   const { handleNoteStart, handleNoteEnd, panic, ready, initializeAudio } = useSynth();
+  
+  // Track which notes are pressed (via mouse or keyboard)
   const [pressedKeys, setPressedKeys] = useState<Set<Note>>(new Set());
   const [isMouseDown, setIsMouseDown] = useState(false);
   const mouseNotesRef = useRef<Set<Note>>(new Set());
 
+  // ─────────────────────────────────────────────
+  // 1. Layout Calculations
+  // ─────────────────────────────────────────────
+  
+  // Calculate layout values based on current mode
+  const layoutConfig = useMemo(() => ({
+    blackKeyWidth: shouldAdjustKeyboardLayout 
+      ? KEYBOARD_LAYOUT.BLACK_KEY.WIDTH.WITHOUT_CONTROLS
+      : KEYBOARD_LAYOUT.BLACK_KEY.WIDTH.WITH_CONTROLS,
+    blackKeyPlacement: shouldAdjustKeyboardLayout
+      ? KEYBOARD_LAYOUT.BLACK_KEY.PLACEMENT.WITHOUT_CONTROLS
+      : KEYBOARD_LAYOUT.BLACK_KEY.PLACEMENT.WITH_CONTROLS
+  }), [shouldAdjustKeyboardLayout]);
+
+  // Compute displayed keys
+  const displayedKeys = useMemo(() => 
+    BASE_KEYBOARD_ORDER.map(note => shiftNoteOctave(note, octaveOffset)),
+    [octaveOffset]
+  );
+
+  // Separate white and black keys
+  const { whiteNotes, blackNotes } = useMemo(() => ({
+    whiteNotes: displayedKeys.filter(n => !n.includes('#')),
+    blackNotes: displayedKeys.filter(n => n.includes('#'))
+  }), [displayedKeys]);
+
+  // Calculate white key width
+  const whiteKeyWidth = useMemo(() => 
+    100 / whiteNotes.length,
+    [whiteNotes.length]
+  );
+
+  // Compute white key positions
+  const computedWhiteKeys = useMemo(() => 
+    whiteNotes.map((note, index) => ({
+      note,
+      left: index * whiteKeyWidth,
+      width: whiteKeyWidth,
+    })), 
+    [whiteNotes, whiteKeyWidth]
+  );
+
+  // Compute black key positions
+  const computedBlackKeys = useMemo(() => {
+    const whiteKeyPositions = new Map(
+      computedWhiteKeys.map(key => [key.note, key.left])
+    );
+
+    return blackNotes
+      .map(note => {
+        const baseNote = note.replace('#', '') as Note;
+        const baseIndex = whiteNotes.indexOf(baseNote);
+        const nextNote = whiteNotes[baseIndex + 1];
+        
+        if (!nextNote) return null;
+
+        const basePosition = whiteKeyPositions.get(baseNote);
+        const nextPosition = whiteKeyPositions.get(nextNote);
+        const gap = nextPosition - basePosition;
+        
+        return {
+          note,
+          left: basePosition + (gap * layoutConfig.blackKeyPlacement),
+          width: whiteKeyWidth * layoutConfig.blackKeyWidth,
+        };
+      })
+      .filter(Boolean);
+  }, [
+    blackNotes, 
+    whiteNotes, 
+    computedWhiteKeys, 
+    layoutConfig.blackKeyPlacement,
+    layoutConfig.blackKeyWidth,
+    whiteKeyWidth
+  ]);
+
+  // ─────────────────────────────────────────────
+  // 2. Note Event Handlers
+  // ─────────────────────────────────────────────
   const handleNoteOn = useCallback((note: Note) => {
     if (!ready || !MIDI_NOTES[note]) return;
     handleNoteStart(note);
@@ -41,12 +160,15 @@ export function SynthKeyboard() {
     });
   }, [ready, handleNoteEnd]);
 
+  // ─────────────────────────────────────────────
+  // 3. Mouse Event Handlers
+  // ─────────────────────────────────────────────
   const handleMouseDown = useCallback(async (note: Note) => {
     if (!ready) {
       try {
         await initializeAudio();
       } catch (error) {
-        console.error("Audio initialization failed:", error);
+        console.error('Audio initialization failed:', error);
         return;
       }
     }
@@ -81,10 +203,13 @@ export function SynthKeyboard() {
   const handleGlobalMouseUp = useCallback(() => {
     if (!ready || !isMouseDown) return;
     setIsMouseDown(false);
-    mouseNotesRef.current.forEach((note) => handleNoteOff(note));
+    mouseNotesRef.current.forEach(n => handleNoteOff(n));
     mouseNotesRef.current.clear();
   }, [ready, isMouseDown, handleNoteOff]);
 
+  // ─────────────────────────────────────────────
+  // 4. Visibility & Window Event Handlers
+  // ─────────────────────────────────────────────
   const handleVisibilityChange = useCallback(() => {
     if (document.hidden && ready) {
       panic();
@@ -94,71 +219,65 @@ export function SynthKeyboard() {
     }
   }, [ready, panic]);
 
+  // ─────────────────────────────────────────────
+  // 5. Keyboard Event Handlers
+  // ─────────────────────────────────────────────
   useEffect(() => {
-    window.addEventListener('keydown', (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (!ready) return;
-      const note = KEYBOARD_MAP[e.code as keyof typeof KEYBOARD_MAP];
-      if (note && !e.repeat) {
+      const baseNote = KEYBOARD_MAP[e.code as keyof typeof KEYBOARD_MAP];
+      if (baseNote && !e.repeat) {
         e.preventDefault();
-        handleNoteOn(note);
+        const shiftedNote = shiftNoteOctave(baseNote, octaveOffset);
+        handleNoteOn(shiftedNote);
       } else if (e.key === 'Escape') {
         panic();
         setPressedKeys(new Set());
       }
-    });
-    window.addEventListener('keyup', (e: KeyboardEvent) => {
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
       if (!ready) return;
-      const note = KEYBOARD_MAP[e.code as keyof typeof KEYBOARD_MAP];
-      if (note) {
-        handleNoteOff(note);
+      const baseNote = KEYBOARD_MAP[e.code as keyof typeof KEYBOARD_MAP];
+      if (baseNote) {
+        const shiftedNote = shiftNoteOctave(baseNote, octaveOffset);
+        handleNoteOff(shiftedNote);
       }
-    });
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('mouseup', handleGlobalMouseUp);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleVisibilityChange);
+
     return () => {
-      window.removeEventListener('keydown', handleNoteOn);
-      window.removeEventListener('keyup', handleNoteOff);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleVisibilityChange);
     };
-  }, [ready, handleNoteOn, handleNoteOff, handleGlobalMouseUp, handleVisibilityChange]);
+  }, [
+    ready,
+    handleNoteOn,
+    handleNoteOff,
+    handleGlobalMouseUp,
+    handleVisibilityChange,
+    octaveOffset,
+    panic,
+  ]);
 
-  // --- Compute Keyboard Layout ---
-  // We consider each octave as having 7 white-key units.
-  // White keys are given equal width, and black keys are positioned relative to these units.
-  const { whiteKeys, blackKeys, totalWhiteUnits } = useMemo(() => {
-    const whiteKeys: { note: Note; index: number }[] = [];
-    const blackKeys: { note: Note; position: number }[] = [];
-    let whiteIndex = 0; // Global white key count across octaves
-    for (let octave = START_OCTAVE; octave < START_OCTAVE + NUM_OCTAVES; octave++) {
-      // Add white keys: C, D, E, F, G, A, B
-      for (let i = 0; i < whiteNoteNames.length; i++) {
-        const note = `${whiteNoteNames[i]}${octave}` as Note;
-        if (MIDI_NOTES[note]) {
-          whiteKeys.push({ note, index: whiteIndex });
-          whiteIndex++;
-        }
-      }
-      // Base white key unit for this octave
-      const base = (octave - START_OCTAVE) * 7;
-      // Add black keys using our mapping
-      for (const [blackNote, offset] of Object.entries(blackNotesMapping)) {
-        const note = `${blackNote}${octave}` as Note;
-        if (MIDI_NOTES[note]) {
-          // The center of the black key (in white key units)
-          const position = base + offset;
-          blackKeys.push({ note, position });
-        }
-      }
-    }
-    return { whiteKeys, blackKeys, totalWhiteUnits: whiteIndex };
-  }, []);
+  // Reset active notes when octave changes
+  useEffect(() => {
+    pressedKeys.forEach(note => handleNoteOff(note));
+    setPressedKeys(new Set());
+    mouseNotesRef.current.clear();
+  }, [octaveOffset, handleNoteOff]);
 
-  const whiteKeyWidthPercent = 100 / totalWhiteUnits;
-  const blackKeyWidthPercent = whiteKeyWidthPercent * 0.1; // Adjust black key width as needed
-
+  // ─────────────────────────────────────────────
+  // 6. Render
+  // ─────────────────────────────────────────────
   return (
     <div className="space-y-6">
       {!ready && (
@@ -168,7 +287,7 @@ export function SynthKeyboard() {
               try {
                 await initializeAudio();
               } catch (e) {
-                console.error("Initialization error:", e);
+                console.error('Initialization error:', e);
               }
             }}
             className="terminal-button px-6 py-3 text-lg bg-terminal-green hover:bg-terminal-green/90 text-black transition-colors"
@@ -177,19 +296,16 @@ export function SynthKeyboard() {
           </button>
         </div>
       )}
-
+  
       {/* Keyboard Container */}
       <div
-        className="relative border border-green-500 rounded bg-black"
+        className="relative border border-green-500 rounded bg-black keyboard-container"
         style={{ maxWidth: '1000px', margin: '0 auto' }}
       >
         {/* White Keys */}
-        <div className="flex" style={{ height: '200px' }}>
-          {whiteKeys.map(({ note, index }) => (
-            <div
-              key={note}
-              style={{ width: `${whiteKeyWidthPercent}%`, position: 'relative' }}
-            >
+        <div className="flex relative" style={{ height: '200px' }}>
+          {computedWhiteKeys.map(({ note, left, width }) => (
+            <div key={note} style={{ width: `${width}%`, position: 'relative' }}>
               <MemoizedKey
                 note={note}
                 isPressed={pressedKeys.has(note)}
@@ -204,39 +320,42 @@ export function SynthKeyboard() {
             </div>
           ))}
         </div>
-
-        {/* Black Keys (absolutely positioned over white keys) */}
-        <div className="absolute" style={{ top: 0, left: 0, height: '120px', width: '100%' }}>
-          {blackKeys.map(({ note, position }) => {
-            // Compute left offset in percent based on white key units
-            const leftPercent = (position / totalWhiteUnits) * 100;
-            return (
-              <div
-                key={note}
-                style={{
-                  position: 'absolute',
-                  left: `${leftPercent}%`,
-                  width: `${blackKeyWidthPercent}%`,
-                  transform: 'translateX(-50%)',
-                }}
-              >
-                <MemoizedKey
-                  note={note}
-                  isPressed={pressedKeys.has(note)}
-                  isSharp={true}
-                  onMouseDown={() => handleMouseDown(note)}
-                  onMouseUp={() => handleMouseUp(note)}
-                  onMouseEnter={() => handleMouseEnter(note)}
-                  onMouseLeave={() => handleMouseLeave(note)}
-                  aria-pressed={pressedKeys.has(note)}
-                  aria-label={`${note} key`}
-                />
-              </div>
-            );
-          })}
+  
+        {/* Black Keys Container */}
+        <div 
+          className="absolute top-0 left-0 right-0 pointer-events-none"
+          style={{ 
+            height: `${200 * KEYBOARD_LAYOUT.BLACK_KEY.HEIGHT_RATIO}px`
+          }}
+        >
+          {/* Individual Black Keys */}
+          {computedBlackKeys.map(({ note, left, width }) => (
+            <div
+              key={note}
+              className="absolute pointer-events-auto"
+              style={{
+                left: `${left}%`,
+                width: `${width}%`,
+                height: '100%',
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <MemoizedKey
+                note={note}
+                isPressed={pressedKeys.has(note)}
+                isSharp={true}
+                onMouseDown={() => handleMouseDown(note)}
+                onMouseUp={() => handleNoteOff(note)}
+                onMouseEnter={() => handleMouseEnter(note)}
+                onMouseLeave={() => handleMouseLeave(note)}
+                aria-pressed={pressedKeys.has(note)}
+                aria-label={`${note} key`}
+              />
+            </div>
+          ))}
         </div>
       </div>
-
+  
       {/* Controls and Information */}
       <div className="mt-4 p-4 border border-green-500 rounded bg-black">
         <div className="flex justify-between items-start">
@@ -244,7 +363,7 @@ export function SynthKeyboard() {
             <p className="font-medium mb-2">Keyboard Controls:</p>
             <pre className="bg-black/30 p-2 rounded text-xs">
               {`White Keys: A S D F G H J K L ;
-Black Keys: W E   T Y U   O P`}
+  Black Keys: W E   T Y U   O P`}
             </pre>
           </div>
           <button
