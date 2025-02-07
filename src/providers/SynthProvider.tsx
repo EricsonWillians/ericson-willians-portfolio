@@ -114,9 +114,26 @@ export function SynthProvider({ children }: { children: ReactNode }) {
   const updateSettings = useCallback((newSettings: Partial<SynthSettings>) => {
     setSettings(prev => {
       const updated = { ...prev, ...newSettings };
+  
       if (engineRef.current && audioState.initialized) {
         try {
-          if (newSettings.oscillator) engineRef.current.updateOscillator(updated.oscillator);
+          // If oscillator modulation type is being changed, reinitialize the engine.
+          if (newSettings.oscillator && 'modulation' in newSettings.oscillator) {
+            const newModType = newSettings.oscillator.modulation?.type || 'none';
+            const oldModType = prev.oscillator.modulation?.type || 'none';
+            if (newModType !== oldModType) {
+              // Stop all notes and dispose the current engine.
+              engineRef.current.panic();
+              engineRef.current.dispose();
+              // Create a new engine with the updated settings.
+              engineRef.current = new SynthEngine(updated);
+            } else {
+              // Otherwise, simply update the oscillator parameters.
+              engineRef.current.updateOscillator(updated.oscillator);
+            }
+          } else if (newSettings.oscillator) {
+            engineRef.current.updateOscillator(updated.oscillator);
+          }
           if (newSettings.envelope) engineRef.current.updateEnvelope(updated.envelope);
           if (newSettings.filter) engineRef.current.updateFilter(updated.filter);
           if (newSettings.effects) engineRef.current.updateEffects(updated.effects);

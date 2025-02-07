@@ -6,10 +6,16 @@ export type Octave = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type NoteName = 'C' | 'C#' | 'D' | 'D#' | 'E' | 'F' | 'F#' | 'G' | 'G#' | 'A' | 'A#' | 'B';
 export type Note = `${NoteName}${Octave}`;
 
-export type OscillatorType = ToneOscillatorType;
+export type ModulationType = 'none' | 'FM' | 'AM';
+export interface OscillatorModulation {
+  type: ModulationType;
+  amount: number;
+}
 
+export type OscillatorType = ToneOscillatorType;
 export interface SynthSettings {
   oscillator: {
+    modulation: OscillatorModulation;
     type: OscillatorType;
     detune: number;
   };
@@ -37,7 +43,6 @@ export interface SynthSettings {
   };
   volume: number;
 }
-
 export interface MIDINote {
   note: Note;
   frequency: number;

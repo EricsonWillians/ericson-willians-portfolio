@@ -4,49 +4,21 @@ import * as Tone from 'tone';
 import { Note, SynthSettings } from '@/types/synth';
 import { SynthEngine } from '@/components/synth/SynthEngine';
 
-// Professional default settings
 const initialSettings: SynthSettings = {
   oscillator: {
     type: 'sawtooth',
     detune: 0,
+    modulation: { type: 'none', amount: 0 }, // FM/AM modulation
   },
-  envelope: {
-    attack: 0.05,
-    decay: 0.3,
-    sustain: 0.4,
-    release: 0.5,
-  },
-  filter: {
-    frequency: 2000,
-    type: 'lowpass',
-    Q: 1,
-  },
-  lfo: {
-    frequency: 5,
-    depth: 0,
-    type: 'sine',
-    target: 'filter',
-  },
+  envelope: { attack: 0.05, decay: 0.3, sustain: 0.4, release: 0.5 },
+  filter: { frequency: 2000, type: 'lowpass', Q: 1 },
+  lfo: { frequency: 5, depth: 0, type: 'sine', target: 'filter' },
   effects: {
-    reverb: {
-      enabled: false,
-      wet: 0,
-      decay: 2,
-      preDelay: 0.01
-    },
-    delay: {
-      enabled: false,
-      wet: 0,
-      time: 0.25,
-      feedback: 0.3
-    },
-    distortion: {
-      enabled: false,
-      wet: 0,
-      amount: 0.8
-    }
+    reverb: { enabled: false, wet: 0 },
+    delay: { enabled: false, wet: 0 },
+    distortion: { enabled: false, wet: 0 },
   },
-  volume: -6,
+  volume: -28,
 };
 
 interface AudioState {

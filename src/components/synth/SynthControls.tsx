@@ -9,7 +9,7 @@ interface SynthControlsProps {
   onUpdateSettings: (settings: Partial<SynthSettings>) => void;
 }
 
-// A memoized slider for continuous parameters.
+// A memoized slider component.
 const ParameterSlider = memo(({
   label,
   value,
@@ -43,7 +43,7 @@ const ParameterSlider = memo(({
 ));
 ParameterSlider.displayName = 'ParameterSlider';
 
-// A memoized toggle with a slider to control effect wetness.
+// A memoized toggle for effect controls.
 const EffectToggle = memo(({
   label,
   enabled,
@@ -85,7 +85,7 @@ const EffectToggle = memo(({
 EffectToggle.displayName = 'EffectToggle';
 
 export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps) {
-  // Waveform selection options.
+  // Waveform options.
   const waveformOptions = useMemo(() => [
     { value: 'sine', label: 'Sine' },
     { value: 'square', label: 'Square' },
@@ -96,28 +96,28 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
     { value: 'triangle8', label: 'Triangle 8' },
   ], []);
 
-  // Filter type options.
+  // Filter types.
   const filterTypes = useMemo(() => [
     { value: 'lowpass', label: 'Low Pass' },
     { value: 'highpass', label: 'High Pass' },
     { value: 'bandpass', label: 'Band Pass' },
   ], []);
 
-  // LFO target options.
+  // LFO targets.
   const lfoTargets = useMemo(() => [
     { value: 'filter', label: 'Filter' },
     { value: 'pitch', label: 'Pitch' },
     { value: 'volume', label: 'Volume' },
   ], []);
 
-  // New modulation options for oscillator synthesis.
+  // Modulation options with better labels.
   const modulationOptions = useMemo(() => [
-    { value: 'none', label: 'None' },
+    { value: 'none', label: 'No Modulation' },
     { value: 'FM', label: 'FM Synthesis' },
     { value: 'AM', label: 'AM Synthesis' },
   ], []);
 
-  // Debounced update handlers for smooth parameter changes.
+  // Debounced parameter update handlers.
   const updateEnvelopeParameter = useCallback(
     debounce((param: string, value: number) => {
       onUpdateSettings({
@@ -145,7 +145,7 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
     [settings.lfo, onUpdateSettings]
   );
 
-  // New debounced update for oscillator modulation parameters.
+  // Debounced update for oscillator modulation parameters.
   const updateOscillatorModulationParameter = useCallback(
     debounce((param: string, value: number) => {
       const currentMod = settings.oscillator.modulation || { type: 'none', amount: 0 };
@@ -175,12 +175,12 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
     [settings.effects, onUpdateSettings]
   );
 
-  // Get current oscillator modulation; default to 'none' if not set.
+  // Get current oscillator modulation settings.
   const currentModulation = settings.oscillator.modulation || { type: 'none', amount: 0 };
 
   return (
     <div className="space-y-6">
-      {/* Oscillator & Envelope Section */}
+      {/* Oscillator & Envelope */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <h3 className="text-terminal-green font-bold">Oscillator</h3>
@@ -206,7 +206,7 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
               })
             }
           />
-          {/* New: Oscillator Modulation Controls */}
+          {/* Modulation Controls */}
           <TerminalSelect
             value={currentModulation.type}
             onValueChange={(value: any) =>
