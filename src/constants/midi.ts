@@ -12,7 +12,12 @@ export const MIDI_NOTES: Record<Note, MIDINote> = {
   'G#4': { note: 'G#4', frequency: 415.30, midiNumber: 68 },
   'A4': { note: 'A4', frequency: 440.00, midiNumber: 69 },
   'A#4': { note: 'A#4', frequency: 466.16, midiNumber: 70 },
-  'B4': { note: 'B4', frequency: 493.88, midiNumber: 71 }
+  'B4': { note: 'B4', frequency: 493.88, midiNumber: 71 },
+  'C5': { note: 'C5', frequency: 523.25, midiNumber: 72 },
+  'C#5': { note: 'C#5', frequency: 554.37, midiNumber: 73 },
+  'D5': { note: 'D5', frequency: 587.33, midiNumber: 74 },
+  'D#5': { note: 'D#5', frequency: 622.25, midiNumber: 75 },
+  'E5': { note: 'E5', frequency: 659.25, midiNumber: 76 }
 } as const;
 
 export const KEYBOARD_MAP: Record<string, Note> = {

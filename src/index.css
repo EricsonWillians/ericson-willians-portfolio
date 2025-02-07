@@ -178,3 +178,20 @@
   @apply text-terminal-green-light;
   text-shadow: 0 0 10px theme('colors.terminal.glow.strong');
 }
+
+@layer components {
+  .terminal-slider {
+    @apply w-full h-2 bg-terminal-black border border-terminal-green/40 rounded-sm;
+    @apply appearance-none cursor-pointer;
+  }
+
+  .terminal-slider::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-sm bg-terminal-green cursor-pointer;
+    @apply hover:bg-terminal-green-light transition-colors duration-150;
+  }
+
+  .terminal-slider::-moz-range-thumb {
+    @apply w-4 h-4 rounded-sm bg-terminal-green border-none cursor-pointer;
+    @apply hover:bg-terminal-green-light transition-colors duration-150;
+  }
+}

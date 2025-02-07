@@ -1,3 +1,5 @@
+// src/components/synth/Key.tsx
+
 import React from "react";
 import { Note } from "@/types/synth";
 import { cn } from "@/lib/utils";
@@ -7,6 +9,8 @@ interface KeyProps {
   isPressed: boolean;
   onMouseDown: () => void;
   onMouseUp: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
   isSharp?: boolean;
 }
 
@@ -15,6 +19,8 @@ export const Key: React.FC<KeyProps> = ({
   isPressed,
   onMouseDown,
   onMouseUp,
+  onMouseEnter,
+  onMouseLeave,
   isSharp
 }) => {
   return (
@@ -26,7 +32,8 @@ export const Key: React.FC<KeyProps> = ({
       )}
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <span className="text-xs">{note}</span>
     </div>
