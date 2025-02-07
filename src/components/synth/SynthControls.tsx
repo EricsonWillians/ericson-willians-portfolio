@@ -9,15 +9,15 @@ interface SynthControlsProps {
   onUpdateSettings: (settings: Partial<SynthSettings>) => void;
 }
 
-// Memoized parameter control components for better performance
-const ParameterSlider = memo(({ 
-  label, 
-  value, 
-  min, 
-  max, 
-  step, 
-  onChange 
-}: { 
+// A memoized slider for continuous parameters.
+const ParameterSlider = memo(({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
   label: string;
   value: number;
   min: number;
@@ -41,17 +41,16 @@ const ParameterSlider = memo(({
     </div>
   </div>
 ));
-
 ParameterSlider.displayName = 'ParameterSlider';
 
-// Memoized effect toggle component
-const EffectToggle = memo(({ 
-  label, 
-  enabled, 
-  wetValue, 
-  onToggle, 
-  onWetChange 
-}: { 
+// A memoized toggle with a slider to control effect wetness.
+const EffectToggle = memo(({
+  label,
+  enabled,
+  wetValue,
+  onToggle,
+  onWetChange,
+}: {
   label: string;
   enabled: boolean;
   wetValue: number;
@@ -83,11 +82,10 @@ const EffectToggle = memo(({
     )}
   </div>
 ));
-
 EffectToggle.displayName = 'EffectToggle';
 
 export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps) {
-  // Memoize options arrays to prevent unnecessary re-renders
+  // Waveform selection options.
   const waveformOptions = useMemo(() => [
     { value: 'sine', label: 'Sine' },
     { value: 'square', label: 'Square' },
@@ -98,19 +96,28 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
     { value: 'triangle8', label: 'Triangle 8' },
   ], []);
 
+  // Filter type options.
   const filterTypes = useMemo(() => [
     { value: 'lowpass', label: 'Low Pass' },
     { value: 'highpass', label: 'High Pass' },
     { value: 'bandpass', label: 'Band Pass' },
   ], []);
 
+  // LFO target options.
   const lfoTargets = useMemo(() => [
     { value: 'filter', label: 'Filter' },
     { value: 'pitch', label: 'Pitch' },
     { value: 'volume', label: 'Volume' },
   ], []);
 
-  // Debounced update handlers for continuous parameters
+  // New modulation options for oscillator synthesis.
+  const modulationOptions = useMemo(() => [
+    { value: 'none', label: 'None' },
+    { value: 'FM', label: 'FM Synthesis' },
+    { value: 'AM', label: 'AM Synthesis' },
+  ], []);
+
+  // Debounced update handlers for smooth parameter changes.
   const updateEnvelopeParameter = useCallback(
     debounce((param: string, value: number) => {
       onUpdateSettings({
@@ -138,25 +145,42 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
     [settings.lfo, onUpdateSettings]
   );
 
-  // Effect update handlers
-  const updateEffect = useCallback((
-    effectName: 'reverb' | 'delay' | 'distortion',
-    changes: Partial<{ enabled: boolean; wet: number }>
-  ) => {
-    onUpdateSettings({
-      effects: {
-        ...settings.effects,
-        [effectName]: {
-          ...settings.effects[effectName],
-          ...changes,
+  // New debounced update for oscillator modulation parameters.
+  const updateOscillatorModulationParameter = useCallback(
+    debounce((param: string, value: number) => {
+      const currentMod = settings.oscillator.modulation || { type: 'none', amount: 0 };
+      onUpdateSettings({
+        oscillator: { 
+          ...settings.oscillator, 
+          modulation: { ...currentMod, [param]: value } 
         },
-      },
-    });
-  }, [settings.effects, onUpdateSettings]);
+      });
+    }, 50),
+    [settings.oscillator, onUpdateSettings]
+  );
+
+  // Effect update handler.
+  const updateEffect = useCallback(
+    (effectName: 'reverb' | 'delay' | 'distortion', changes: Partial<{ enabled: boolean; wet: number }>) => {
+      onUpdateSettings({
+        effects: {
+          ...settings.effects,
+          [effectName]: {
+            ...settings.effects[effectName],
+            ...changes,
+          },
+        },
+      });
+    },
+    [settings.effects, onUpdateSettings]
+  );
+
+  // Get current oscillator modulation; default to 'none' if not set.
+  const currentModulation = settings.oscillator.modulation || { type: 'none', amount: 0 };
 
   return (
     <div className="space-y-6">
-      {/* Oscillator & Envelope */}
+      {/* Oscillator & Envelope Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <h3 className="text-terminal-green font-bold">Oscillator</h3>
@@ -182,26 +206,63 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
               })
             }
           />
+          {/* New: Oscillator Modulation Controls */}
+          <TerminalSelect
+            value={currentModulation.type}
+            onValueChange={(value: any) =>
+              onUpdateSettings({
+                oscillator: {
+                  ...settings.oscillator,
+                  modulation: { type: value, amount: currentModulation.amount },
+                },
+              })
+            }
+            options={modulationOptions}
+            placeholder="Modulation Type"
+          />
+          {currentModulation.type !== 'none' && (
+            <ParameterSlider
+              label="Modulation Amount"
+              value={currentModulation.amount}
+              min={0}
+              max={10}
+              step={0.1}
+              onChange={(value) =>
+                updateOscillatorModulationParameter('amount', value)
+              }
+            />
+          )}
         </div>
         <div className="space-y-2">
           <h3 className="text-terminal-green font-bold">Envelope</h3>
           <div className="grid grid-cols-2 gap-2">
-            {Object.entries(settings.envelope).map(([param, value]) => (
-              <ParameterSlider
-                key={param}
-                label={param}
-                value={value as number}
-                min={0}
-                max={1}
-                step={0.01}
-                onChange={(value) => updateEnvelopeParameter(param, value)}
-              />
-            ))}
+            {Object.entries(settings.envelope).map(([param, value]) => {
+              let max = 1;
+              let step = 0.01;
+              if (param === 'attack' || param === 'release') {
+                max = 5;
+                step = 0.05;
+              } else if (param === 'decay') {
+                max = 5;
+                step = 0.05;
+              }
+              return (
+                <ParameterSlider
+                  key={param}
+                  label={param}
+                  value={value as number}
+                  min={0}
+                  max={max}
+                  step={step}
+                  onChange={(value) => updateEnvelopeParameter(param, value)}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Filter */}
+      {/* Filter Section */}
       <div className="space-y-2">
         <h3 className="text-terminal-green font-bold">Filter</h3>
         <TerminalSelect
@@ -232,15 +293,13 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
         />
       </div>
 
-      {/* LFO */}
+      {/* LFO Section */}
       <div className="space-y-2">
         <h3 className="text-terminal-green font-bold">LFO</h3>
         <TerminalSelect
           value={settings.lfo.target}
           onValueChange={(value: any) =>
-            onUpdateSettings({
-              lfo: { ...settings.lfo, target: value },
-            })
+            onUpdateSettings({ lfo: { ...settings.lfo, target: value } })
           }
           options={lfoTargets}
           placeholder="LFO Target"
@@ -263,7 +322,7 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
         />
       </div>
 
-      {/* Effects */}
+      {/* Effects Section */}
       <div className="space-y-2">
         <h3 className="text-terminal-green font-bold">Effects</h3>
         <div className="space-y-2">
@@ -294,5 +353,4 @@ export function SynthControls({ settings, onUpdateSettings }: SynthControlsProps
   );
 }
 
-// Memoize the entire component for better performance
 export default memo(SynthControls);

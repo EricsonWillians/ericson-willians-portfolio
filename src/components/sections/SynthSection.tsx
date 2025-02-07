@@ -12,6 +12,7 @@ export function SynthSection() {
     setIsMinimized(prev => !prev);
   }, []);
 
+  // Determine the audio status message and light color.
   const getAudioStatus = () => {
     if (error) {
       return { text: "Audio Error - Refresh Page", color: "bg-red-500", showStartButton: true };
@@ -24,6 +25,7 @@ export function SynthSection() {
 
   const status = getAudioStatus();
 
+  // A simple memoized component to display effect status.
   const EffectDisplay = memo(
     ({
       label,
@@ -38,9 +40,7 @@ export function SynthSection() {
         <span className="text-sm text-terminal-green">{label}:</span>
         <div className="flex items-center gap-2">
           <div
-            className={`w-2 h-2 rounded-full ${
-              enabled ? "bg-terminal-green" : "bg-terminal-green/20"
-            }`}
+            className={`w-2 h-2 rounded-full ${enabled ? "bg-terminal-green" : "bg-terminal-green/20"}`}
           />
           <span className="text-sm text-terminal-green">
             {enabled ? `${(value * 100).toFixed(0)}%` : "Off"}
@@ -49,35 +49,43 @@ export function SynthSection() {
       </div>
     )
   );
-  
   EffectDisplay.displayName = "EffectDisplay";
 
   return (
     <section className="terminal-section p-6" aria-label="Synthesizer Interface">
+      {/* Header */}
       <header className="mb-6 bg-black/30 p-4 rounded border border-terminal-green">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-terminal-green/60">&gt;</span>
             <h2 className="text-2xl font-bold text-terminal-green">Synthesizer</h2>
             <div className="flex items-center gap-2">
-              <span className={`inline-block w-2 h-2 rounded-full ${status.color}`} aria-label={status.text} />
+              <span
+                className={`inline-block w-2 h-2 rounded-full ${status.color}`}
+                aria-label={status.text}
+              />
               <span className="text-sm text-terminal-green/60">{status.text}</span>
             </div>
           </div>
-          <button onClick={handleToggleView} className="terminal-button text-sm" aria-label={isMinimized ? "Show Controls" : "Hide Controls"}>
+          <button
+            onClick={handleToggleView}
+            className="terminal-button text-sm"
+            aria-label={isMinimized ? "Show Controls" : "Hide Controls"}
+          >
             {isMinimized ? "Show Controls" : "Hide Controls"}
           </button>
         </div>
       </header>
 
+      {/* Main Content */}
       <div className={`grid gap-6 transition-all duration-300 ${isMinimized ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2"}`}>
+        {/* Left Section: Synth Controls and Effect Status */}
         {!isMinimized && (
           <div className="space-y-6">
             <div className="bg-black p-6 rounded border border-terminal-green">
               <h3 className="text-lg font-bold text-terminal-green mb-4">Synth Controls</h3>
               <SynthControls settings={currentSettings} onUpdateSettings={updateSettings} />
             </div>
-
             <div className="bg-black p-6 rounded border border-terminal-green">
               <h3 className="text-lg font-bold text-terminal-green mb-4">Effect Status</h3>
               <div className="space-y-2">
@@ -101,7 +109,7 @@ export function SynthSection() {
           </div>
         )}
 
-        {/* Keyboard Section */}
+        {/* Right Section: Synth Keyboard */}
         <div className={isMinimized ? "col-span-1" : "lg:col-span-1"}>
           <div className="bg-black p-6 rounded border border-terminal-green">
             <SynthKeyboard />
@@ -109,7 +117,7 @@ export function SynthSection() {
         </div>
       </div>
 
-      {/* Footer Information */}
+      {/* Footer */}
       <footer className="mt-6 border-t border-terminal-green/20 pt-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="text-sm text-terminal-green/80">
